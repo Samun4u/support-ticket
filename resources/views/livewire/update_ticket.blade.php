@@ -1,8 +1,9 @@
 <form wire:submit.prevent="updateTicket" >
     @if ($ticketFilePreview)
         <div class="mb-3">
-            <embed src="http://127.0.0.1:8000/storage/{{$ticketFilePreview}}" type="">
-                <p wire:click="removeUpdatePreviewFile">remove</p>
+            <p class="text-primary">{{$ticketFilePreview}}
+                <span class="text-danger" wire:click="removeUpdatePreviewFile">remove</span>
+            </p>
         </div>
     @endif
     @if (session()->has('message'))
