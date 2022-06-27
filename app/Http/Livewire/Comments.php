@@ -5,11 +5,11 @@ namespace App\Http\Livewire;
 use App\Models\Attachment;
 use App\Models\Comment;
 use App\Models\SupportTicket;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
-use Intervention\Image\ImageManagerStatic;
 use Illuminate\Support\Str;
 
 class Comments extends Component
@@ -18,11 +18,13 @@ class Comments extends Component
     use WithPagination;
     protected $paginationTheme = 'bootstrap';
 
-    public $image;
+    public $commentFile;
     public $newComment;
     public $ticketId;
+    public $updateMode=false;
+    public $commentUpdateId;
+    public $commentFilePreview;
     protected $listeners = [
-        'fileUpload' => 'uploadFileHandle',
         'ticketSelected',
     ];
 
@@ -42,10 +44,7 @@ class Comments extends Component
     protected $messages = [
         'newComment.required' => 'This comment field is required'
     ];
-    public function uploadFileHandle($imageData)
-    {
-        $this->image = $imageData;
-    }
+   
     public function updated($field)
     {
         $this->validateOnly($field, [
@@ -60,37 +59,148 @@ class Comments extends Component
         $this->validate([
             'newComment' => 'required|max:255'
         ]);
-        $image = $this->storeImage();
-        if($image)
-       {
-        $attachment = Attachment::create([
-            'file_name' =>  $image,
-            'file_path' =>  Storage::url($image),
-        ]);
-       }
+        $storedFile = $this->storeFile();
+        DB::beginTransaction();
+        if ($storedFile) {
+            $attachment = Attachment::create([
+                'file_name' =>  $storedFile['name'],
+                'file_path' =>  Storage::url($storedFile['name']),
+                'file_size' =>  $storedFile['size'],
+                'file_type' =>  $storedFile['type'],
+            ]);
+        }
+        if($this->ticketId == null)
+        {
+            session()->flash('message', 'Ticket Not Found');
+            $this->emit('alert_remove');
+            return;
+        }
         $createdComment = Comment::create([
             'body' => $this->newComment,
             'user_id' => 1,
             'attachment_id' => $attachment->id ?? null,
             'ticket_id' => $this->ticketId,
         ]);
+        DB::commit();
 
         $this->newComment = "";
-        $this->image = "";
+        $this->commentFile = "";
 
         session()->flash('message', 'Successfully Add Comment');
         $this->emit('alert_remove');
         return;
     }
 
-    public function storeImage()
+    public function storeFile()
     {
-        if (!$this->image) return null;
+        if (!$this->commentFile) return null;
 
-        $img = ImageManagerStatic::make($this->image)->encode('jpg');
-        $name = Str::random() . '.jpg';
-        Storage::disk('public')->put($name, $img);
-        return $name;
+        $file['name'] = Str::random() . '.' . $this->commentFile->extension();
+        $this->commentFile->storeAs('public', $file['name']);
+        $file['size'] = $this->commentFile->getSize();
+        $file['type'] = $this->commentFile->extension();
+        return $file;
+    }
+
+     //edit file upload
+     public function editFile()
+     {
+         if (!$this->commentFile && !$this->commentFilePreview) {
+             return null;
+         } elseif ($this->commentFile && $this->commentFilePreview) {
+             $file['name'] = Str::random() . '.' . $this->commentFile->extension();
+             $this->commentFile->storeAs('public', $file['name']);
+             $file['size'] = $this->commentFile->getSize();
+             $file['type'] = $this->commentFile->extension();
+             return $file;
+         } elseif (!$this->commentFile && $this->commentFilePreview) {
+             $attachment = Attachment::where('file_name', $this->commentFilePreview)->firstOrFail();
+             return $attachment->id;
+         }
+ 
+         $file['name'] = Str::random() . '.' . $this->commentFile->extension();
+         $this->commentFile->storeAs('public', $file['name']);
+         $file['size'] = $this->commentFile->getSize();
+         $file['type'] = $this->commentFile->extension();
+         return $file;
+     }
+
+     //File download
+    public function downloadFile($attachmentID)
+    {
+        $attachment = Attachment::where('id', $attachmentID)->firstOrFail();
+
+        $filePath = storage_path("app/public/" . $attachment->file_name);
+        $headers = ['Content-Type: application/' . $attachment->file_type];
+        $fileName = $attachment->file_name;
+        return response()->download($filePath, $fileName, $headers);
+    }
+
+    public function edit($id)
+    {
+        $this->commentFilePreview = "";
+        $comment = Comment::findOrFail($id);
+        if ($comment->attachment_id) {
+            $attachment = Attachment::where('id', $comment->attachment_id)->firstOrFail();
+            $this->commentFilePreview = $attachment->file_name;
+        }
+
+        $this->newComment = $comment->body;
+        $this->commentUpdateId = $id;
+        $this->updateMode = true;
+    }
+
+    public function removeUpdatePreviewFile()
+    {
+        $this->commentFilePreview = "";
+    }
+
+    public function updateComment()
+    {
+        $attachmentID=null;
+        $this->newComment;
+        $this->commentUpdateId;
+        $this->commentFile;
+
+        DB::beginTransaction();
+        $comment = Comment::findOrFail($this->commentUpdateId);
+        $comment->body = $this->newComment;
+        $comment->ticket_id =  $this->ticketId;
+        $comment->user_id = 2;
+
+        $updateFile = $this->editFile();
+
+
+        if (gettype($updateFile) == "array") {
+
+            $attachment = Attachment::create([
+                'file_name' =>  $updateFile['name'],
+                'file_path' =>  Storage::url($updateFile['name']),
+                'file_size' =>  $updateFile['size'],
+                'file_type' =>  $updateFile['type'],
+            ]);
+
+            $attachmentID =$attachment->id;
+        } elseif (gettype($updateFile) == "integer") {
+            $attachmentID = $updateFile;
+        }
+        $comment->attachment_id = $attachmentID;
+        $comment->save();
+        DB::commit();
+        $this->newComment = "";
+        $this->commentFile = "";
+        $this->updateMode = false;
+        session()->flash('message', 'Successfully Updated Ticket');
+        $this->emit('alert_remove');
+        return;
+    }
+
+    public function cancel()
+    {
+        $this->newComment = "";
+        $this->commentUpdateId = "";
+        $this->commentFile = "";
+        $this->updateMode = false;
     }
 
     public function remove($commentID)
@@ -106,6 +216,6 @@ class Comments extends Component
 
     public function render()
     {
-        return view('livewire.comments', ['comments' => Comment::where('ticket_id',$this->ticketId ?? 1)->latest()->paginate(2)]);
+        return view('livewire.comments', ['comments' => Comment::where('ticket_id',$this->ticketId)->latest()->paginate(2)]);
     }
 }

@@ -3,16 +3,15 @@
 namespace App\Http\Livewire;
 
 use App\Models\Attachment;
-use App\Models\Comment;
 use App\Models\SupportTicket;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Illuminate\Support\Facades\Storage;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
-use Intervention\Image\ImageManagerStatic;
 use Illuminate\Support\Str;
-use Livewire\TemporaryUploadedFile;
+
+
 
 class Ticket extends Component
 {
@@ -60,7 +59,7 @@ class Ticket extends Component
         ]);
 
         $storedFile = $this->storeFile();
-
+        DB::beginTransaction();
         if ($storedFile) {
             $attachment = Attachment::create([
                 'file_name' =>  $storedFile['name'],
@@ -79,8 +78,7 @@ class Ticket extends Component
             'attachment_id' => $attachment->id ?? null,
             'status' => 0,
         ]);
-
-
+        DB::commit();
 
         $this->newTicket = "";
         $this->ticketFile = "";
@@ -88,7 +86,9 @@ class Ticket extends Component
         session()->flash('message', 'Successfully Add Ticket');
         $this->emit('alert_remove');
         return;
+       
     }
+
     //add file upload
     public function storeFile()
     {
@@ -145,7 +145,7 @@ class Ticket extends Component
         }
 
         $this->newTicket = $ticket->subject;
-        $this->ticket_update_id = $id;
+        $this->ticketUpdateId = $id;
         $this->updateMode = true;
     }
 
@@ -158,10 +158,10 @@ class Ticket extends Component
     {
         $attachmentID=null;
         $this->newTicket;
-        $this->ticket_update_id;
+        $this->ticketUpdateId;
         $this->ticketFile;
-
-        $ticket = SupportTicket::findOrFail($this->ticket_update_id);
+        DB::beginTransaction();
+        $ticket = SupportTicket::findOrFail($this->ticketUpdateId);
         $ticket->subject = $this->newTicket;
         $ticket->ticket_number =  $ticket->ticket_number;
         $ticket->user_id = 2;
@@ -188,7 +188,7 @@ class Ticket extends Component
         $ticket->attachment_id = $attachmentID;
 
         $ticket->save();
-
+        DB::commit();
         $this->newTicket = "";
         $this->ticketFile = "";
         $this->updateMode = false;
@@ -200,7 +200,7 @@ class Ticket extends Component
     public function cancel()
     {
         $this->newTicket = "";
-        $this->ticket_update_id = "";
+        $this->ticketUpdateId = "";
         $this->ticketFile = "";
         $this->updateMode = false;
     }

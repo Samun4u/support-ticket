@@ -1,7 +1,7 @@
 <form wire:submit.prevent="addComment">
-    @if ($image)
+    @if ($commentFile)
         <div class="mb-3">
-            <img src="{{ $image }}" class="img-fluid" alt="image">
+            
         </div>
     @endif
     @if (session()->has('message'))
@@ -10,7 +10,7 @@
     </div>
 @endif
     <div class="mb-3">
-        <input type="file" id="image" wire:change="$emit('fileChoose')" class="form-control">
+        <input type="file" id="image"  wire:model="commentFile" class="form-control">
     </div>
     <div class="mb-3">
         <input class="form-control" type="text" wire:model="newComment">

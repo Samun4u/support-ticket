@@ -25,11 +25,3 @@
     </div>
    
 </div>
-<script>
-    ticketImage.onchange = evt => {
-  const [file] = ticketImage.files
-  if (file) {
-    blah.src = URL.createObjectURL(file)
-  }
-}
-</script>
