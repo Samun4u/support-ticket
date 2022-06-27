@@ -46,7 +46,7 @@ class Ticket extends Component
 
 
     public function updated($filed)
-    {
+    { 
         $this->validateOnly($filed, [
             'newTicket' => 'required|max:255'
         ]);
