@@ -20,7 +20,6 @@ class CreateCommentsTable extends Migration
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('ticket_id');
             $table->unsignedBigInteger('attachment_id')->nullable();
-            
             $table->timestamps();
         });
     }

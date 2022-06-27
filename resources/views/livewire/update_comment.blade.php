@@ -12,7 +12,7 @@
     </div>
 @endif
 <div class="mb-3">
-    <input type="text" wire:model="commentUpdateId" class="form-control">
+    <input type="hidden" wire:model="commentUpdateId" class="form-control">
 </div>
     <div class="mb-3">
         <input type="file" id="image"  wire:model="commentFile" class="form-control">

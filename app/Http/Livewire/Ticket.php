@@ -33,6 +33,11 @@ class Ticket extends Component
         'ticketSelected'
     ];
 
+    public function ticketSelected($ticketID)
+    {
+        $this->active = $ticketID;
+    }
+
 
 
     public function mount()
@@ -80,6 +85,8 @@ class Ticket extends Component
         ]);
         DB::commit();
 
+      
+
         $this->newTicket = "";
         $this->ticketFile = "";
 
@@ -100,6 +107,8 @@ class Ticket extends Component
         $file['type'] = $this->ticketFile->extension();
         return $file;
     }
+
+   
 
     //edit file upload
     public function editFile()
@@ -154,6 +163,11 @@ class Ticket extends Component
         $this->ticketFilePreview = "";
     }
 
+    public function removeAttachment($id)
+    {
+        
+    }
+
     public function updateTicket()
     {
         $attachmentID=null;
@@ -171,7 +185,7 @@ class Ticket extends Component
 
 
         if (gettype($updateFile) == "array") {
-
+            
             $attachment = Attachment::create([
                 'file_name' =>  $updateFile['name'],
                 'file_path' =>  Storage::url($updateFile['name']),
@@ -183,10 +197,8 @@ class Ticket extends Component
         } elseif (gettype($updateFile) == "integer") {
             $attachmentID = $updateFile;
         }
-
-
+        
         $ticket->attachment_id = $attachmentID;
-
         $ticket->save();
         DB::commit();
         $this->newTicket = "";
@@ -205,10 +217,7 @@ class Ticket extends Component
         $this->updateMode = false;
     }
 
-    public function ticketSelected($ticketID)
-    {
-        $this->active = $ticketID;
-    }
+    
 
     public function render()
     {

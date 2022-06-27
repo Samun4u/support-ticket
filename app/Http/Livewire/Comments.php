@@ -59,7 +59,16 @@ class Comments extends Component
         $this->validate([
             'newComment' => 'required|max:255'
         ]);
+
+       
         $storedFile = $this->storeFile();
+        if($this->ticketId == null)
+        {
+            session()->flash('message', 'Ticket Not Found! Please Select Ticket');
+            $this->emit('alert_remove');
+            return;
+           
+        }
         DB::beginTransaction();
         if ($storedFile) {
             $attachment = Attachment::create([
@@ -69,12 +78,7 @@ class Comments extends Component
                 'file_type' =>  $storedFile['type'],
             ]);
         }
-        if($this->ticketId == null)
-        {
-            session()->flash('message', 'Ticket Not Found');
-            $this->emit('alert_remove');
-            return;
-        }
+       
         $createdComment = Comment::create([
             'body' => $this->newComment,
             'user_id' => 1,
@@ -82,6 +86,8 @@ class Comments extends Component
             'ticket_id' => $this->ticketId,
         ]);
         DB::commit();
+
+        
 
         $this->newComment = "";
         $this->commentFile = "";

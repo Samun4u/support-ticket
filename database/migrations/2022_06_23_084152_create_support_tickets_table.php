@@ -15,14 +15,13 @@ class CreateSupportTicketsTable extends Migration
     {
         Schema::create('support_tickets', function (Blueprint $table) {
             $table->id();
-            
+
             $table->string('subject');
             $table->string('ticket_number');
             $table->unsignedBigInteger('user_id')->nullable();
             $table->unsignedBigInteger('assign_to')->nullable();
             $table->unsignedBigInteger('attachment_id')->nullable();
             $table->integer('status')->default(0)->comment('0 for Open, 1 for solved, 2 for close');
-            
             $table->timestamps();
         });
     }
