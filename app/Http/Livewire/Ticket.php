@@ -111,11 +111,22 @@ class Ticket extends Component
    
 
     //edit file upload
-    public function editFile()
+    public function editFile($ticketID)
     {
         if (!$this->ticketFile && !$this->ticketFilePreview) {
+            $t=SupportTicket::where("id",$ticketID)->first();
+            if($t->attachment_id)
+            {
+              $a= Attachment::where('id',$t->attachment_id)->first();
+              $a->delete();
+              return null;
+            }
             return null;
         } elseif ($this->ticketFile && $this->ticketFilePreview) {
+            $t=SupportTicket::where("id",$ticketID)->first();
+            $a= Attachment::where('id',$t->attachment_id)->first();
+            $a->delete();
+
             $file['name'] = Str::random() . '.' . $this->ticketFile->extension();
             $this->ticketFile->storeAs('public', $file['name']);
             $file['size'] = $this->ticketFile->getSize();
@@ -124,13 +135,27 @@ class Ticket extends Component
         } elseif (!$this->ticketFile && $this->ticketFilePreview) {
             $attachment = Attachment::where('file_name', $this->ticketFilePreview)->firstOrFail();
             return $attachment->id;
+        }elseif ($this->ticketFile && !$this->ticketFilePreview) {
+            $t=SupportTicket::where("id",$ticketID)->first();
+            if($t->attachment_id)
+            {
+              $a= Attachment::where('id',$t->attachment_id)->first();
+              $a->delete();
+
+              $file['name'] = Str::random() . '.' . $this->ticketFile->extension();
+            $this->ticketFile->storeAs('public', $file['name']);
+            $file['size'] = $this->ticketFile->getSize();
+            $file['type'] = $this->ticketFile->extension();
+            return $file;
+            }
+            $file['name'] = Str::random() . '.' . $this->ticketFile->extension();
+            $this->ticketFile->storeAs('public', $file['name']);
+            $file['size'] = $this->ticketFile->getSize();
+            $file['type'] = $this->ticketFile->extension();
+            return $file;
         }
 
-        $file['name'] = Str::random() . '.' . $this->ticketFile->extension();
-        $this->ticketFile->storeAs('public', $file['name']);
-        $file['size'] = $this->ticketFile->getSize();
-        $file['type'] = $this->ticketFile->extension();
-        return $file;
+       
     }
 
     //File download
@@ -163,10 +188,7 @@ class Ticket extends Component
         $this->ticketFilePreview = "";
     }
 
-    public function removeAttachment($id)
-    {
-        
-    }
+    
 
     public function updateTicket()
     {
@@ -174,15 +196,13 @@ class Ticket extends Component
         $this->newTicket;
         $this->ticketUpdateId;
         $this->ticketFile;
+        $updateFile = $this->editFile($this->ticketUpdateId);
         DB::beginTransaction();
         $ticket = SupportTicket::findOrFail($this->ticketUpdateId);
         $ticket->subject = $this->newTicket;
         $ticket->ticket_number =  $ticket->ticket_number;
         $ticket->user_id = 2;
         $ticket->assign_to = 2;
-
-        $updateFile = $this->editFile();
-
 
         if (gettype($updateFile) == "array") {
             
@@ -197,7 +217,7 @@ class Ticket extends Component
         } elseif (gettype($updateFile) == "integer") {
             $attachmentID = $updateFile;
         }
-        
+
         $ticket->attachment_id = $attachmentID;
         $ticket->save();
         DB::commit();

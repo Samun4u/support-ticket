@@ -109,11 +109,21 @@ class Comments extends Component
     }
 
      //edit file upload
-     public function editFile()
+     public function editFile($commentID)
      {
          if (!$this->commentFile && !$this->commentFilePreview) {
+            $c=Comment::where("id",$commentID)->first();
+            if($c->attachment_id)
+            {
+              $a= Attachment::where('id',$c->attachment_id)->first();
+              $a->delete();
+              return null;
+            }
              return null;
          } elseif ($this->commentFile && $this->commentFilePreview) {
+            $c=Comment::where("id",$commentID)->first();
+            $a= Attachment::where('id',$c->attachment_id)->first();
+            $a->delete();
              $file['name'] = Str::random() . '.' . $this->commentFile->extension();
              $this->commentFile->storeAs('public', $file['name']);
              $file['size'] = $this->commentFile->getSize();
@@ -123,6 +133,20 @@ class Comments extends Component
              $attachment = Attachment::where('file_name', $this->commentFilePreview)->firstOrFail();
              return $attachment->id;
          }
+
+            $c=Comment::where("id",$commentID)->first();
+            if($c->attachment_id)
+            {
+              $a= Attachment::where('id',$c->attachment_id)->first();
+              $a->delete();
+
+              $file['name'] = Str::random() . '.' . $this->commentFile->extension();
+              $this->commentFile->storeAs('public', $file['name']);
+              $file['size'] = $this->commentFile->getSize();
+              $file['type'] = $this->commentFile->extension();
+              return $file;
+             
+            }
  
          $file['name'] = Str::random() . '.' . $this->commentFile->extension();
          $this->commentFile->storeAs('public', $file['name']);
@@ -167,6 +191,7 @@ class Comments extends Component
         $this->newComment;
         $this->commentUpdateId;
         $this->commentFile;
+        $updateFile = $this->editFile($this->commentUpdateId);
 
         DB::beginTransaction();
         $comment = Comment::findOrFail($this->commentUpdateId);
@@ -174,7 +199,7 @@ class Comments extends Component
         $comment->ticket_id =  $this->ticketId;
         $comment->user_id = 2;
 
-        $updateFile = $this->editFile();
+       
 
 
         if (gettype($updateFile) == "array") {
@@ -213,6 +238,8 @@ class Comments extends Component
     {
 
         $comment = Comment::find($commentID);
+        $attachment = Attachment::find($comment->attachment_id);
+        $attachment->delete();
         $comment->delete();
         session()->flash('message', 'Successfully Remove Comment 😃');
         $this->emit('alert_remove');
